@@ -3280,7 +3280,13 @@ def apply_function(
     thread_state.key = key
     start = time()
     try:
-        result = function(*args, **kwargs)
+        if iscoroutinefunction(function):
+            # TODO: this might block other coroutines (scheduler doesn't provide any for switching)
+            # Maybe transition to pending, but that might need separate pool and handling of async/sync methods,
+            # and making this method truly async
+            result = IOLoop.current().run_sync(partial(function, *args, **kwargs))
+        else:
+            result = function(*args, **kwargs)
     except Exception as e:
         msg = error_message(e)
         msg["op"] = "task-erred"
